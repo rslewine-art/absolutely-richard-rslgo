@@ -999,13 +999,24 @@ async function handleSend() {
     const data = await response.json();
     removeTyping();
 
-    if (data.error) {
+    if (data.limitReached) {
+      conversationHistory.pop();
+      renderMessage('assistant', `You've used your complimentary messages. To keep going, choose one of the options below.`);
+      lockInterface();
+      isTyping = false;
+      return;
+    } else if (data.error) {
       renderMessage('assistant', `Let's look at the way it really is: we ran into a temporary connection issue. Please try again in a moment.`);
       console.error('Backend error:', data.error);
     } else {
       const reply = data.content[0].text;
       conversationHistory.push({ role: 'assistant', content: reply });
       renderMessage('assistant', reply);
+      // The server keeps the real count (per network, so a page refresh doesn't reset it)
+      if (typeof data.freeRemaining === 'number') {
+        messageCount = MESSAGE_LIMIT - data.freeRemaining;
+        updateCounter();
+      }
       if (messageCount >= MESSAGE_LIMIT) lockInterface();
     }
 
